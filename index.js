@@ -59,32 +59,19 @@ class App {
     this.input.on('quit', () => this.quit());
     this.input.start();
 
-    // Open solution from argument or cwd
+    // Open project from argument or auto-detect in cwd
     const arg = process.argv[2];
     if (arg) {
       const resolved = path.resolve(arg);
-      if (resolved.endsWith('.sln') && fs.existsSync(resolved)) {
+      if (!fs.existsSync(resolved)) {
+        addOutputLine(this.state, 'warn', `Not found: ${resolved}`);
+      } else if (fs.statSync(resolved).isDirectory()) {
+        this._autoOpen(resolved);
+      } else {
         this.openSolution(resolved);
-      } else if (fs.existsSync(resolved) && fs.statSync(resolved).isDirectory()) {
-        const found = solutionCore.findSlnFiles(resolved);
-        if (found.length === 1) this.openSolution(found[0]);
-        else if (found.length > 1) {
-          addOutputLine(this.state, 'info', 'Multiple .sln files found:');
-          found.forEach(f => addOutputLine(this.state, 'normal', `  ${f}`));
-          addOutputLine(this.state, 'info', 'Use :open <path> to select one');
-        } else {
-          addOutputLine(this.state, 'warn', `No .sln found in ${resolved}`);
-        }
       }
     } else {
-      const found = solutionCore.findSlnFiles(process.cwd());
-      if (found.length === 1) {
-        this.openSolution(found[0]);
-      } else {
-        addOutputLine(this.state, 'info', 'Welcome to dotnet-tui!');
-        addOutputLine(this.state, 'info', 'Press ? for help, or :open <path> to open a solution');
-        addOutputLine(this.state, 'info', ':find will search the current directory for .sln files');
-      }
+      this._autoOpen(process.cwd());
     }
 
     this.render();
@@ -155,19 +142,41 @@ class App {
     sc.flush();
   }
 
-  // ── Solution management ────────────────────────────────────────────────────
+  // ── Auto-detect and open in a directory ───────────────────────────────────
+  _autoOpen(dir) {
+    const { solutions, projects } = solutionCore.findProjectFiles(dir);
+
+    // Prefer solution files; fall back to standalone project files
+    const candidates = solutions.length > 0 ? solutions : projects;
+
+    if (candidates.length === 1) {
+      this.openSolution(candidates[0]);
+    } else if (candidates.length > 1) {
+      addOutputLine(this.state, 'info', `Found ${candidates.length} project files:`);
+      candidates.forEach(f => addOutputLine(this.state, 'normal', `  ${f}`));
+      addOutputLine(this.state, 'info', 'Use :open <path> to select one');
+    } else {
+      addOutputLine(this.state, 'info', 'Welcome to lazynet!');
+      addOutputLine(this.state, 'info', 'Press ? for help, or :open <path> to open a project');
+      addOutputLine(this.state, 'info', ':find searches the current directory  (.sln .slnx .csproj .fsproj .vbproj)');
+    }
+  }
+
+  // ── Open any supported project/solution file ───────────────────────────────
   openSolution(slnPath) {
     try {
-      if (!slnPath.endsWith('.sln')) {
-        this.state.statusMsg = `✘ Not a .sln file: ${slnPath}`;
-        this.render(); return;
-      }
       if (!fs.existsSync(slnPath)) {
         this.state.statusMsg = `✘ File not found: ${slnPath}`;
         this.render(); return;
       }
 
-      const solution = solutionCore.parseSln(slnPath);
+      const ext = path.extname(slnPath).toLowerCase();
+      if (![...solutionCore.SOLUTION_EXTS, ...solutionCore.PROJECT_EXTS].includes(ext)) {
+        this.state.statusMsg = `✘ Unsupported: ${ext}`;
+        this.render(); return;
+      }
+
+      const solution = solutionCore.openProject(slnPath);
       this.state.solution  = solution;
       this.state.treeIdx   = 0;
       this.state.treeScroll = 0;
@@ -180,12 +189,15 @@ class App {
 
       this.rebuildTree();
       configMod.addRecentSln(this.cfg, slnPath);
+
+      const fmt = solution.format === 'single' ? 'project' : solution.format;
       this.state.statusMsg = `✔ Opened: ${path.basename(slnPath)}`;
-      addOutputLine(this.state, 'success', `Opened solution: ${slnPath}`);
+      addOutputLine(this.state, 'success', `Opened ${fmt}: ${slnPath}`);
       addOutputLine(this.state, 'info',    `  ${this.state.projects.length} project(s) found`);
       this.state.projects.forEach(p => {
-        const fw = p.csproj ? p.csproj.targetFw : 'unknown';
-        addOutputLine(this.state, 'normal', `  • ${p.name}  [${fw}]`);
+        const fw   = p.csproj ? p.csproj.targetFw : 'unknown';
+        const lang = p.lang   ? `  ${p.lang}`     : '';
+        addOutputLine(this.state, 'normal', `  • ${p.name}  [${fw}${lang}]`);
       });
     } catch (e) {
       this.state.statusMsg = `✘ Error: ${e.message}`;

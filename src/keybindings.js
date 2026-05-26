@@ -318,25 +318,26 @@ function execCommand(cmd, state, runner, render, app) {
   if (verb === 'clear') { state.outputLines = []; state.statusMsg = 'Output cleared'; render(); return; }
 
   if (verb === 'open') {
-    const slnPath = arg || process.cwd();
-    app.openSolution(slnPath);
+    const target = arg || process.cwd();
+    app.openSolution(target);
     return;
   }
 
   if (verb === 'find') {
     const dir = arg || process.cwd();
-    const found = solutionCore.findSlnFiles(dir);
-    if (found.length === 0) {
-      state.statusMsg = `✘ No .sln found in ${dir}`;
-    } else if (found.length === 1) {
-      app.openSolution(found[0]);
+    const { solutions, projects } = solutionCore.findProjectFiles(dir);
+    const all = solutions.length > 0 ? solutions : projects;
+
+    if (all.length === 0) {
+      state.statusMsg = `✘ No .NET project files found in ${dir}`;
+    } else if (all.length === 1) {
+      app.openSolution(all[0]);
     } else {
-      // Show in output
-      addOutputLine(state, 'info', `Found ${found.length} solution files:`);
-      found.forEach((f, i) => addOutputLine(state, 'normal', `  [${i+1}] ${f}`));
-      addOutputLine(state, 'info', `Use :open <path> to open one`);
+      addOutputLine(state, 'info', `Found ${all.length} project files in ${dir}:`);
+      all.forEach((f, i) => addOutputLine(state, 'normal', `  [${i + 1}] ${f}`));
+      addOutputLine(state, 'info', 'Use :open <path> to open one');
       state.activePanel = PANEL.OUTPUT;
-      state.statusMsg = `Found ${found.length} solutions — see output`;
+      state.statusMsg = `Found ${all.length} files — see output`;
     }
     render(); return;
   }

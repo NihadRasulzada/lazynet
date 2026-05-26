@@ -55,12 +55,25 @@ make uninstall    # remove binary + installed files
 make link         # npm link  (symlink-based, stays tied to source dir)
 ```
 
+## Supported project types
+
+| File | Format |
+|------|--------|
+| `*.sln` | Classic solution |
+| `*.slnx` | XML solution (.NET 9+) |
+| `*.csproj` | C# project (standalone) |
+| `*.fsproj` | F# project (standalone) |
+| `*.vbproj` | VB.NET project (standalone) |
+
 ## Usage
 
 ```bash
-lazynet                    # auto-detect .sln in current directory
-lazynet MySolution.sln     # open a specific solution
-lazynet /path/to/project   # search directory for .sln files
+lazynet                      # auto-detect any .NET project in current directory
+lazynet MySolution.sln       # classic solution
+lazynet MySolution.slnx      # new XML solution (.NET 9+)
+lazynet MyApp.csproj         # single C# project
+lazynet MyLib.fsproj         # single F# project
+lazynet /path/to/dir         # search directory for any supported file
 ```
 
 ## Keybindings

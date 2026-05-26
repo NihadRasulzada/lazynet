@@ -36,9 +36,11 @@ function buildTreeItems(solution, projects, expanded) {
 
     if (expanded[projKey] && proj.csproj) {
       // Target framework info
+      const langBadge = proj.lang ? `  ${proj.lang}` : '';
+      const sdkBadge  = proj.csproj.sdk && !proj.csproj.isSdkStyle ? '  (legacy)' : '';
       items.push({
         type:  'info',
-        label: `${proj.csproj.targetFw}  ${proj.csproj.outputType}`,
+        label: `${proj.csproj.targetFw}  ${proj.csproj.outputType}${langBadge}${sdkBadge}`,
         depth: 2,
         data:  proj,
       });
@@ -204,10 +206,18 @@ function renderTree(screen, state, x, y, w, h) {
         fgR = T.fgAccent[0]; fgG = T.fgAccent[1]; fgB = T.fgAccent[2];
         bold = true;
         break;
-      case 'project':
+      case 'project': {
         icon = (item.expanded ? '▾ ' : '▸ ') + ICONS.project + ' ';
-        fgR = T.fgCyan[0]; fgG = T.fgCyan[1]; fgB = T.fgCyan[2];
+        const lang = item.data && item.data.lang;
+        if (lang === 'F#') {
+          fgR = T.fgMagenta[0]; fgG = T.fgMagenta[1]; fgB = T.fgMagenta[2];
+        } else if (lang === 'VB') {
+          fgR = T.fgOrange[0]; fgG = T.fgOrange[1]; fgB = T.fgOrange[2];
+        } else {
+          fgR = T.fgCyan[0]; fgG = T.fgCyan[1]; fgB = T.fgCyan[2];
+        }
         break;
+      }
       case 'info':
         icon = '';
         fgR = T.fgDim[0]; fgG = T.fgDim[1]; fgB = T.fgDim[2];
