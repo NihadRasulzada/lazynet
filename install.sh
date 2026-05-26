@@ -11,7 +11,7 @@ warn()    { echo -e "${YELLOW}${BOLD}  ⚠${NC}  $*"; }
 error()   { echo -e "${RED}${BOLD}  ✘${NC}  $*" >&2; }
 header()  { echo -e "\n${BLUE}${BOLD}$*${NC}\n"; }
 
-header "dotnet-tui installer"
+header "lazynet installer"
 
 # Node.js check
 if ! command -v node &>/dev/null; then
@@ -41,7 +41,7 @@ SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 info "Installing from: $SCRIPT_DIR"
 
 # Create symlink in /usr/local/bin
-TARGET="/usr/local/bin/dotnet-tui"
+TARGET="/usr/local/bin/lazynet"
 
 if [ -w /usr/local/bin ]; then
   ln -sf "$SCRIPT_DIR/index.js" "$TARGET"
@@ -57,14 +57,14 @@ fi
 # User-local alternative
 LOCAL_BIN="$HOME/.local/bin"
 if [ -d "$LOCAL_BIN" ] && echo "$PATH" | grep -q "$LOCAL_BIN"; then
-  ln -sf "$SCRIPT_DIR/index.js" "$LOCAL_BIN/dotnet-tui"
+  ln -sf "$SCRIPT_DIR/index.js" "$LOCAL_BIN/lazynet"
   success "Also linked in $LOCAL_BIN"
 fi
 
 header "Installation complete!"
-echo -e "  Run ${BOLD}dotnet-tui${NC}                to start (auto-detects .sln)"
-echo -e "  Run ${BOLD}dotnet-tui MySolution.sln${NC}  to open a specific solution"
-echo -e "  Run ${BOLD}dotnet-tui /path/to/dir${NC}    to search a directory"
+echo -e "  Run ${BOLD}lazynet${NC}                to start (auto-detects .sln)"
+echo -e "  Run ${BOLD}lazynet MySolution.sln${NC}  to open a specific solution"
+echo -e "  Run ${BOLD}lazynet /path/to/dir${NC}    to search a directory"
 echo ""
 echo -e "  Press ${BOLD}?${NC} inside the app for keybinding help"
 echo ""

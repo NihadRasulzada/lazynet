@@ -4,7 +4,7 @@
   "description": "Terminal UI for managing C# .NET projects",
   "main": "index.js",
   "bin": {
-    "dotnet-tui": "./index.js"
+    "lazynet": "./index.js"
   },
   "scripts": {
     "start": "node index.js",
