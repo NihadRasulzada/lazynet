@@ -1,62 +1,76 @@
-# dotnet-tui
+# lazynet
 
-Terminal UI for managing C# .NET projects — built with zero npm dependencies, pure Node.js.
+Terminal UI for managing C# .NET solutions — inspired by lazygit, built with pure Node.js.
 
 ```
-╭── Solution Explorer ─────╮ ╭── Output ────────────────────────────────────────────╮
-│ ◈ MyApp.sln              │ │                                                      │
-│  ▾ ⬡ MyApp.Api           │ │ ▶ dotnet build MyApp.Api/MyApp.Api.csproj -c Debug  │
-│    net8.0  WebApplication│ │ ────────────────────────────────────────────────────  │
-│    ▸ Packages (3)        │ │ Build succeeded.                                     │
-│    ▾ References (1)      │ │  0 Error(s)                                          │
-│      ⊸ MyApp.Core        │ │  0 Warning(s)                                        │
-│  ▸ ⬡ MyApp.Core          │ │                                                      │
-│  ▸ ⬡ MyApp.Tests         │ │ ✔ Build done                                         │
-╰──────────────────────────╯ ╰──────────────────────────────────────────────────────╯
- NORMAL   Debug   MyApp.sln                                  ? help  :cmd  n NuGet
+ ◈ lazynet                                                        ⌂ ~/Projects/MyApp
+╭──────  Solution Explorer  ──────╮│╭──────  Output  ───────────────────────────────────╮
+│ ◈ MyApp.sln                     ││  Welcome to lazynet!                               │
+│   ▾ ⬡ MyApp.Api                 ││  Opened solution: MyApp.sln                        │
+│   │   net8.0  WebApplication    ││    3 project(s) found                              │
+│   │   ▸ Packages (3)            ││    • MyApp.Api     [net8.0]                        │
+│   │   ▾ References (1)          ││    • MyApp.Core    [net8.0]                        │
+│   │ │   ⊸ MyApp.Core            ││    • MyApp.Tests   [net8.0]                        │
+│   ▸ ⬡ MyApp.Core                ││                                                    │
+│   ▸ ⬡ MyApp.Tests               ││  ✔ Build done                                      │
+╰─────────────────────────────────╯│╰────────────────────────────────────────────────────╯
+█ NORMAL ▐ Debug │ MyApp.sln          ✔ Opened: MyApp.sln           ▌ ? help  :cmd  n NuGet
 ```
 
 ## Features
 
-- **Zero npm dependencies** — only Node.js built-ins
+- **Zero npm dependencies** — pure Node.js, no bloat
 - **Vim-style modal keybindings** — Normal / Command / NuGet modes
-- **Solution Explorer** — full tree with expand/collapse
+- **Solution Explorer** — full tree with indent guides, expand/collapse
 - **Build system** — build, rebuild, clean, run, test, publish, restore
-- **NuGet manager** — search, version picker, install, remove (Visual Studio-style)
+- **NuGet manager** — search nuget.org, version picker, install, remove
 - **Project references** — view and manage with visual tree
-- **.NET 5–10 support** — SDK-style projects
-- **JSON config** — persists recent solutions, build config
+- **Tokyo Night theme** — modern dark color palette
+- **Powerline status bar** — mode pill, config, solution name
+- **.NET 5–10 support** — SDK-style `.csproj` projects
+- **JSON config** — persists recent solutions and build config
 
 ## Installation
 
 ```bash
-git clone <repo> dotnet-tui
-cd dotnet-tui
-chmod +x install.sh
-./install.sh
+git clone <repo> lazynet
+cd lazynet
+make install
 ```
+
+After install the source directory can be safely deleted — files are copied to
+`~/.local/share/lazynet/` and the binary is linked at `/usr/local/bin/lazynet`.
 
 **Requirements:**
 - Node.js 16+
 - .NET SDK 5.0+ (for build/run features)
-- Linux, macOS (any terminal emulator)
+- Linux or macOS
+
+### Other install options
+
+```bash
+make install      # copy to ~/.local/share/lazynet + /usr/local/bin/lazynet
+make update       # re-build from source into the installed location
+make uninstall    # remove binary + installed files
+make link         # npm link  (symlink-based, stays tied to source dir)
+```
 
 ## Usage
 
 ```bash
-dotnet-tui                    # auto-detect .sln in current directory
-dotnet-tui MySolution.sln     # open specific solution
-dotnet-tui /path/to/project   # search directory for .sln
+lazynet                    # auto-detect .sln in current directory
+lazynet MySolution.sln     # open a specific solution
+lazynet /path/to/project   # search directory for .sln files
 ```
 
 ## Keybindings
 
-### Navigation (Normal mode)
+### Navigation
 
 | Key | Action |
 |-----|--------|
 | `h j k l` / arrow keys | Move cursor |
-| `Enter` / `l` | Expand/collapse tree node |
+| `Enter` / `l` | Expand / collapse tree node |
 | `h` / `←` | Collapse / go to parent |
 | `Tab` / `Shift+Tab` | Switch panel (Tree ↔ Output) |
 | `g g` | Go to top |
@@ -94,6 +108,7 @@ dotnet-tui /path/to/project   # search directory for .sln
 
 | Key | Action |
 |-----|--------|
+| `A` | Add project reference |
 | `D` | Remove selected project reference |
 
 ### Commands (`:` mode)
@@ -123,15 +138,15 @@ The NuGet manager mirrors Visual Studio's Package Manager UI:
 1. Press `n` on a project node
 2. Type a package name → live search from nuget.org
 3. `↑↓` to select a package
-4. `Enter` to open version picker (newest stable versions first)
-5. `↑↓` to select version, `Enter` to install
+4. `Enter` to open version picker (newest stable first)
+5. `↑↓` to pick version → `Enter` to install
 
-Packages are installed via `dotnet add package` — the project file is
-automatically updated and the tree refreshes.
+Packages are installed via `dotnet add package` — the `.csproj` is updated
+automatically and the tree refreshes.
 
 ## Config
 
-Config is stored at `~/.config/dotnet-tui/config.json`:
+Config is stored at `~/.config/lazynet/config.json`:
 
 ```json
 {
@@ -149,18 +164,22 @@ Config is stored at `~/.config/dotnet-tui/config.json`:
 index.js              Entry point, layout engine, app loop
 src/
   core/
-    ansi.js           ANSI escape engine (blessed replacement)
-    screen.js         Screen renderer + theme
+    ansi.js           ANSI escape engine
+    screen.js         Screen renderer + Tokyo Night theme
     input.js          Raw keyboard + mouse parser
-    solution.js       .sln/.csproj parser & editor
+    solution.js       .sln / .csproj parser & editor
     runner.js         dotnet CLI wrapper (spawn)
-    nuget.js          NuGet API client (https, no deps)
+    nuget.js          NuGet API client (nuget.org v3)
     config.js         JSON config persistence
   state.js            Central application state
   keybindings.js      Vim modal keybinding engine
   ui/
-    tree.js           Solution Explorer renderer
+    tree.js           Solution Explorer renderer (indent guides)
     output.js         Output panel renderer
     nuget.js          NuGet popup renderer
-    statusbar.js      Status bar + help overlay
+    statusbar.js      Header bar, status bar, help overlay
 ```
+
+## License
+
+MIT
