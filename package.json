@@ -1,0 +1,23 @@
+{
+  "name": "dotnet-tui",
+  "version": "1.0.0",
+  "description": "Terminal UI for managing C# .NET projects",
+  "main": "index.js",
+  "bin": {
+    "dotnet-tui": "./index.js"
+  },
+  "scripts": {
+    "start": "node index.js",
+    "dev": "node index.js"
+  },
+  "dependencies": {
+    "blessed": "^0.1.81",
+    "xml2js": "^0.6.2",
+    "node-fetch": "^2.7.0"
+  },
+  "engines": {
+    "node": ">=16.0.0"
+  },
+  "keywords": ["dotnet", "csharp", "tui", "terminal", "nuget"],
+  "license": "MIT"
+}
