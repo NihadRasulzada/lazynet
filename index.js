@@ -4,19 +4,19 @@
 const path = require('path');
 const fs   = require('fs');
 
-const { Screen, T, ansi } = require('./src/core/screen');
-const { Input }            = require('./src/core/input');
-const { Runner }           = require('./src/core/runner');
+const { Screen, T, ansi }  = require('./src/core/screen');
+const { Input }             = require('./src/core/input');
+const { Runner }            = require('./src/core/runner');
 const { createState, MODE, PANEL } = require('./src/state');
 const { buildTreeItems, renderTree } = require('./src/ui/tree');
 const { renderOutput, addOutputLine } = require('./src/ui/output');
-const { renderNuget }    = require('./src/ui/nuget');
-const { renderStatusBar, renderCommandLine, renderHelp } = require('./src/ui/statusbar');
-const keybindings        = require('./src/keybindings');
-const solutionCore       = require('./src/core/solution');
-const configMod          = require('./src/core/config');
+const { renderNuget }       = require('./src/ui/nuget');
+const { renderHeader, renderStatusBar, renderCommandLine, renderHelp } = require('./src/ui/statusbar');
+const keybindings           = require('./src/keybindings');
+const solutionCore          = require('./src/core/solution');
+const configMod             = require('./src/core/config');
 
-// ─── App class ───────────────────────────────────────────────────────────────
+// ─── App ──────────────────────────────────────────────────────────────────────
 class App {
   constructor() {
     this.cfg      = configMod.load();
@@ -26,16 +26,12 @@ class App {
     this.runner   = new Runner();
     this._expanded = {};
     this._renderPending = false;
-    this._renderTimer   = null;
   }
 
   start() {
     this.screen.init();
 
-    // Handle resize
-    this.screen.onResize((w, h) => {
-      this.render();
-    });
+    this.screen.onResize(() => this.render());
 
     // Runner events
     this.runner.on('start', ({ label }) => {
@@ -60,22 +56,20 @@ class App {
     this.input.on('key', (key) => {
       keybindings.handleKey(key, this.state, this.runner, () => this.render(), this);
     });
-
     this.input.on('quit', () => this.quit());
-
     this.input.start();
 
-    // Check if a .sln was passed as argument
+    // Open solution from argument or cwd
     const arg = process.argv[2];
     if (arg) {
       const resolved = path.resolve(arg);
       if (resolved.endsWith('.sln') && fs.existsSync(resolved)) {
         this.openSolution(resolved);
-      } else if (fs.statSync(resolved).isDirectory()) {
+      } else if (fs.existsSync(resolved) && fs.statSync(resolved).isDirectory()) {
         const found = solutionCore.findSlnFiles(resolved);
         if (found.length === 1) this.openSolution(found[0]);
         else if (found.length > 1) {
-          addOutputLine(this.state, 'info', `Multiple .sln files found:`);
+          addOutputLine(this.state, 'info', 'Multiple .sln files found:');
           found.forEach(f => addOutputLine(this.state, 'normal', `  ${f}`));
           addOutputLine(this.state, 'info', 'Use :open <path> to select one');
         } else {
@@ -83,14 +77,13 @@ class App {
         }
       }
     } else {
-      // Try cwd
       const found = solutionCore.findSlnFiles(process.cwd());
       if (found.length === 1) {
         this.openSolution(found[0]);
       } else {
         addOutputLine(this.state, 'info', 'Welcome to dotnet-tui!');
         addOutputLine(this.state, 'info', 'Press ? for help, or :open <path> to open a solution');
-        addOutputLine(this.state, 'info', ':find will search current directory for .sln files');
+        addOutputLine(this.state, 'info', ':find will search the current directory for .sln files');
       }
     }
 
@@ -112,37 +105,52 @@ class App {
     const W  = sc.cols;
     const H  = sc.rows;
 
-    // Layout dimensions
-    const treeW  = Math.max(28, Math.min(42, Math.floor(W * 0.28)));
-    const outW   = W - treeW - 1;
-    const mainH  = H - 2;  // minus statusbar (1) + command line (1)
+    // ── Layout ────────────────────────────────────────────────────────────────
+    //  Row 1     : header bar
+    //  Row 2     : header separator (part of header)
+    //  Row 3…H-2 : main panels (tree + output)
+    //  Row H-1   : status bar
+    //  Row H     : command line
+    const HEADER_H = 1;       // header bar row
+    const panelY   = 1 + HEADER_H;          // panels start at row 2
+    const mainH    = H - HEADER_H - 2;      // rows available for panels
 
-    // Clear everything first
+    const treeW = Math.max(28, Math.min(42, Math.floor(W * 0.28)));
+    const outW  = W - treeW - 1;
+
+    // Clear screen
     sc.fillRect(1, 1, W, H, T.bg[0], T.bg[1], T.bg[2]);
 
+    // Header
+    renderHeader(sc, st, 1, W);
+
     // Tree panel
-    const newScroll = renderTree(sc, st, 1, 1, treeW, mainH);
+    const newScroll = renderTree(sc, st, 1, panelY, treeW, mainH);
     if (newScroll !== undefined) st.treeScroll = newScroll;
 
-    // Vertical divider
-    sc.push(ansi.fg(T.fgBorder[0], T.fgBorder[1], T.fgBorder[2]));
-    for (let r = 1; r <= mainH; r++) {
-      sc.push(ansi.moveTo(r, treeW + 1) + ansi.bg(T.bg[0], T.bg[1], T.bg[2]) + '│' + ansi.reset());
+    // Vertical divider between tree and output
+    for (let r = panelY; r < panelY + mainH; r++) {
+      sc.push(
+        ansi.moveTo(r, treeW + 1) +
+        ansi.bg(T.bg[0], T.bg[1], T.bg[2]) +
+        ansi.fg(T.fgBorder[0], T.fgBorder[1], T.fgBorder[2]) +
+        '│' +
+        ansi.reset()
+      );
     }
-    sc.push(ansi.reset());
 
     // Output panel
-    renderOutput(sc, st, treeW + 2, 1, outW, mainH);
+    renderOutput(sc, st, treeW + 2, panelY, outW, mainH);
 
     // Status bar
     renderStatusBar(sc, st, H - 1, W);
 
-    // Command line (overwrites status bar when in CMD mode)
+    // Command line (overwrites status bar row when in CMD mode)
     renderCommandLine(sc, st, H, W);
 
     // Overlays
     if (st.mode === MODE.NUGET) renderNuget(sc, st, W, H);
-    if (st._showHelp) renderHelp(sc, st, W, H);
+    if (st._showHelp)           renderHelp(sc, st, W, H);
 
     sc.flush();
   }
@@ -160,12 +168,11 @@ class App {
       }
 
       const solution = solutionCore.parseSln(slnPath);
-      this.state.solution = solution;
-      this.state.treeIdx  = 0;
+      this.state.solution  = solution;
+      this.state.treeIdx   = 0;
       this.state.treeScroll = 0;
       this._expanded = {};
 
-      // Load all projects
       this.state.projects = solution.projects.map(p => {
         const csproj = solutionCore.parseCsproj(p.fullPath);
         return { ...p, csproj };
@@ -175,7 +182,7 @@ class App {
       configMod.addRecentSln(this.cfg, slnPath);
       this.state.statusMsg = `✔ Opened: ${path.basename(slnPath)}`;
       addOutputLine(this.state, 'success', `Opened solution: ${slnPath}`);
-      addOutputLine(this.state, 'info', `  ${this.state.projects.length} project(s) found`);
+      addOutputLine(this.state, 'info',    `  ${this.state.projects.length} project(s) found`);
       this.state.projects.forEach(p => {
         const fw = p.csproj ? p.csproj.targetFw : 'unknown';
         addOutputLine(this.state, 'normal', `  • ${p.name}  [${fw}]`);
@@ -193,7 +200,6 @@ class App {
       this.state.projects,
       this._expanded
     );
-    // Clamp cursor
     if (this.state.treeIdx >= this.state.treeItems.length) {
       this.state.treeIdx = Math.max(0, this.state.treeItems.length - 1);
     }
@@ -219,7 +225,6 @@ class App {
 
 // ─── Error safety ─────────────────────────────────────────────────────────────
 process.on('uncaughtException', (err) => {
-  // Restore terminal before crashing
   process.stdout.write('\x1b[?1049l\x1b[?25h\x1b[?1000l');
   console.error('\n[dotnet-tui] Uncaught error:', err.message);
   console.error(err.stack);

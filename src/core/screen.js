@@ -2,46 +2,46 @@
 
 const ansi = require('./ansi');
 
-// ─── Theme ───────────────────────────────────────────────────────────────────
+// ─── Theme (Tokyo Night) ──────────────────────────────────────────────────────
 const T = {
-  // Base
-  bg:          [18, 18, 24],
-  bgPanel:     [24, 24, 32],
-  bgSelected:  [40, 60, 100],
-  bgFocused:   [30, 40, 70],
-  bgHeader:    [28, 28, 40],
-  bgStatus:    [20, 20, 30],
-  bgPopup:     [30, 32, 48],
-  bgInput:     [36, 38, 56],
+  // Backgrounds
+  bg:          [26, 27, 38],
+  bgPanel:     [31, 32, 46],
+  bgSelected:  [41, 54, 95],
+  bgFocused:   [36, 40, 70],
+  bgHeader:    [20, 21, 32],
+  bgStatus:    [15, 15, 24],
+  bgPopup:     [36, 37, 54],
+  bgInput:     [43, 44, 63],
 
   // Foreground
-  fg:          [200, 200, 210],
-  fgDim:       [120, 120, 140],
-  fgSelected:  [255, 255, 255],
-  fgHeader:    [160, 180, 255],
-  fgBorder:    [60, 70, 110],
-  fgAccent:    [100, 180, 255],
-  fgGreen:     [100, 220, 140],
-  fgYellow:    [255, 210, 80],
-  fgRed:       [255, 100, 100],
-  fgOrange:    [255, 160, 60],
-  fgCyan:      [80, 220, 220],
-  fgMagenta:   [200, 130, 255],
-  fgGray:      [90, 95, 115],
+  fg:          [192, 202, 245],
+  fgDim:       [118, 122, 155],
+  fgSelected:  [228, 232, 255],
+  fgHeader:    [125, 207, 255],
+  fgBorder:    [50, 55, 88],
+  fgAccent:    [125, 207, 255],
+  fgGreen:     [158, 206, 106],
+  fgYellow:    [224, 175, 104],
+  fgRed:       [247, 118, 142],
+  fgOrange:    [255, 158, 100],
+  fgCyan:      [125, 240, 230],
+  fgMagenta:   [187, 154, 247],
+  fgGray:      [86, 95, 137],
 
   // Mode colors
-  modeNormal:  [100, 180, 255],
-  modeInsert:  [100, 220, 140],
-  modeNuget:   [200, 130, 255],
-  modeTest:    [255, 210, 80],
-  modeCommand: [255, 160, 60],
+  modeNormal:  [125, 207, 255],
+  modeInsert:  [158, 206, 106],
+  modeNuget:   [187, 154, 247],
+  modeTest:    [224, 175, 104],
+  modeCommand: [255, 158, 100],
 };
 
 // ─── Screen ──────────────────────────────────────────────────────────────────
 class Screen {
   constructor() {
     this.cols = process.stdout.columns || 220;
-    this.rows = process.stdout.rows || 50;
+    this.rows = process.stdout.rows    || 50;
     this._buf = [];
     this._onResize = null;
 
@@ -65,10 +65,8 @@ class Screen {
     ansi.write(ansi.altOff());
   }
 
-  // Buffer a write
   push(str) { this._buf.push(str); }
 
-  // Flush buffer
   flush() {
     if (this._buf.length) {
       ansi.write(this._buf.join(''));
@@ -76,7 +74,6 @@ class Screen {
     }
   }
 
-  // Draw a filled rectangle
   fillRect(x, y, w, h, bgR, bgG, bgB, char = ' ') {
     const row = ansi.bg(bgR, bgG, bgB) + char.repeat(w) + ansi.reset();
     for (let r = 0; r < h; r++) {
@@ -84,7 +81,6 @@ class Screen {
     }
   }
 
-  // Draw a box with border
   drawBox(x, y, w, h, opts = {}) {
     const {
       bgR = T.bgPanel[0], bgG = T.bgPanel[1], bgB = T.bgPanel[2],
@@ -97,7 +93,7 @@ class Screen {
       ? ansi.fg(T.fgAccent[0], T.fgAccent[1], T.fgAccent[2])
       : ansi.fg(bR, bG, bB);
 
-    const bg = ansi.bg(bgR, bgG, bgB);
+    const bg  = ansi.bg(bgR, bgG, bgB);
     const rst = ansi.reset();
 
     // Top border
@@ -105,14 +101,16 @@ class Screen {
     if (title) {
       const t = ` ${title} `;
       const tColored = ansi.fg(tR, tG, tB) + ansi.bold() + t + rst + borderColor + bg;
-      const pad = '─'.repeat(Math.max(0, Math.floor((w - 2 - ansi.strip(t).length) / 2)));
-      const padR = '─'.repeat(Math.max(0, w - 2 - pad.length * 2 - ansi.strip(t).length));
+      const inner    = w - 2;
+      const tLen     = ansi.strip(t).length;
+      const pad      = '─'.repeat(Math.max(0, Math.floor((inner - tLen) / 2)));
+      const padR     = '─'.repeat(Math.max(0, inner - pad.length * 2 - tLen));
       topLine = '╭' + pad + tColored + pad + padR + '╮';
     }
     this.push(ansi.moveTo(y, x) + bg + borderColor + topLine + rst);
 
     // Side borders + fill
-    const innerFill = bg + ansi.fg(bgR+10,bgG+10,bgB+10) + ' '.repeat(w - 2) + rst;
+    const innerFill = bg + ' '.repeat(w - 2) + rst;
     for (let r = 1; r < h - 1; r++) {
       this.push(ansi.moveTo(y + r, x) + bg + borderColor + '│' + innerFill + bg + borderColor + '│' + rst);
     }
@@ -121,15 +119,13 @@ class Screen {
     this.push(ansi.moveTo(y + h - 1, x) + bg + borderColor + '╰' + '─'.repeat(w - 2) + '╯' + rst);
   }
 
-  // Write text at position with colors
   text(x, y, str, fgR, fgG, fgB, bgR, bgG, bgB, width = 0) {
-    const bg = bgR !== undefined ? ansi.bg(bgR, bgG, bgB) : '';
-    const fg = fgR !== undefined ? ansi.fg(fgR, fgG, fgB) : '';
+    const bg  = bgR !== undefined ? ansi.bg(bgR, bgG, bgB) : '';
+    const fg  = fgR !== undefined ? ansi.fg(fgR, fgG, fgB) : '';
     let out = str;
     if (width > 0) {
       const vis = ansi.strip(str).length;
       if (vis > width) {
-        // Truncate
         out = str.slice(0, width - 1) + '…';
       } else {
         out = str + ' '.repeat(width - vis);
@@ -138,7 +134,6 @@ class Screen {
     this.push(ansi.moveTo(y, x) + bg + fg + out + ansi.reset());
   }
 
-  // Horizontal line
   hline(x, y, w, char = '─', fgR, fgG, fgB, bgR, bgG, bgB) {
     const bg = bgR !== undefined ? ansi.bg(bgR, bgG, bgB) : '';
     const fg = fgR !== undefined ? ansi.fg(fgR, fgG, fgB) : '';
